@@ -7,7 +7,7 @@ Telegram Mini App for a fast, vertical Reels-style video feed.
 - **Frontend:** React + TypeScript + Vite, packaged as a static Nginx service.
 - **Backend:** FastAPI + SQLAlchemy async.
 - **Auth:** Google OAuth with server-side session cookie.
-- **Feed:** category-filtered, short-lived in-memory cache to keep playback requests out of the database as much as practical.
+- **Feed:** personalized by persisted country + content-category preferences, with a short-lived per-user cache.
 - **Playback:** only the active video plays; only the next item is allowed to use metadata preloading.
 - **Adult category:** server-side age eligibility is required before the adult feed is returned.
 - **Media:** the API stores URLs to already-hosted media. It does not extract or transcode Instagram media during playback.
@@ -46,7 +46,7 @@ with:
 
 `Authorization: Bearer <ADMIN_API_TOKEN>`
 
-and JSON containing `id`, `category`, `video_url`, optional `thumbnail_url`, `title`, and `is_adult`.
+and JSON containing `id`, `category`, `countries`, `video_url`, optional `thumbnail_url`, `title`, and `is_adult`. `countries` contains supported two-letter country codes.
 
 The actual video source/CDN is deliberately not invented in this repository. It must be selected and configured before production content is added.
 
