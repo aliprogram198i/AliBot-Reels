@@ -168,9 +168,7 @@ async def set_age_eligibility(request: Request, session: DB):
     return {"age_eligible": True}
 
 @app.get("/api/feed")
-async def feed(category: str = Query("all", max_length=50), request: Request | None = None, session: DB = None):
-    if session is None or request is None:
-        raise HTTPException(status_code=500, detail="database unavailable")
+async def feed(request: Request, session: DB, category: str = Query("all", max_length=50)):
     is_adult = category == "adult"
     if is_adult:
         user = await current_user(request, session)
