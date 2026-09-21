@@ -6,7 +6,7 @@ from contextlib import asynccontextmanager
 from typing import Annotated
 
 from authlib.integrations.starlette_client import OAuth
-from fastapi import Depends, FastAPI, Header, HTTPException, Query, Request
+from fastapi import Depends, FastAPI, Header, HTTPException, Query, Request\nfrom fastapi.responses import RedirectResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field, HttpUrl
 from sqlalchemy import Boolean, String, select
@@ -24,7 +24,7 @@ ADMIN_API_TOKEN = os.getenv("ADMIN_API_TOKEN", "")
 GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID", "")
 GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET", "")
 GOOGLE_REDIRECT_URI = os.getenv("GOOGLE_REDIRECT_URI", "")
-ALLOWED_ORIGINS = [x.strip() for x in os.getenv("ALLOWED_ORIGINS", "").split(",") if x.strip()]
+ALLOWED_ORIGINS = [x.strip() for x in os.getenv("ALLOWED_ORIGINS", "").split(",") if x.strip()]\nFRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173")
 
 if not SESSION_SECRET and APP_ENV == "production":
     raise RuntimeError("SESSION_SECRET is required in production")
@@ -151,7 +151,7 @@ async def google_callback(request: Request, session: DB):
     await session.commit()
     await session.refresh(user)
     request.session["user_id"] = user.id
-    return {"authenticated": True, "redirect": "/"}
+    return RedirectResponse(url=FRONTEND_URL, status_code=303)
 
 @app.post("/api/auth/logout")
 async def logout(request: Request) -> dict[str, bool]:
