@@ -1,6 +1,6 @@
 import pytest
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
+from sqlalchemy import create_engine, select
+from sqlalchemy.orm import Session
 
 from app.main import (
     Base,
@@ -29,18 +29,14 @@ def test_category_validation_rejects_unknown_category():
         validate_category("unknown")
 
 
-@pytest.mark.asyncio
-async def test_country_and_category_targeting_query():
-    engine = create_async_engine("sqlite+aiosqlite:///:memory:")
-    session_factory = async_sessionmaker(engine, expire_on_commit=False)
+def test_country_and_category_targeting_query():
+    engine = create_engine("sqlite:///:memory:")
+    Base.metadata.create_all(engine)
 
-    async with engine.begin() as connection:
-        await connection.run_sync(Base.metadata.create_all)
-
-    async with session_factory() as session:
+    with Session(engine) as session:
         user = User(email="test@example.invalid", onboarding_complete=True)
         session.add(user)
-        await session.flush()
+        session.flush()
 
         session.add(UserPreference(user_id=user.id, category="sports"))
         session.add_all([
@@ -62,7 +58,7 @@ async def test_country_and_category_targeting_query():
             ReelCountry(reel_id="nl-music", country_code="NL"),
             ReelCountry(reel_id="nl-adult", country_code="NL"),
         ])
-        await session.commit()
+        session.commit()
 
         countries = ["NL", "DE"]
         statement = (
@@ -77,8 +73,8 @@ async def test_country_and_category_targeting_query():
             .distinct()
             .order_by(Reel.id.asc())
         )
-        rows = (await session.execute(statement)).scalars().all()
+        rows = session.execute(statement).scalars().all()
 
         assert [row.id for row in rows] == ["nl-sports"]
 
-    await engine.dispose()
+    engine.dispose()
