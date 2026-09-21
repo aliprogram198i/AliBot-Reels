@@ -126,8 +126,7 @@ def validate_telegram_init_data(init_data: str) -> dict[str, str]:
     auth_date = int(pairs.get("auth_date", "0"))
     if abs(time.time() - auth_date) > 86400:
         raise HTTPException(status_code=401, detail="expired Telegram init data")
-    check_string = "
-".join(f"{key}={value}" for key, value in sorted(pairs.items()))
+    check_string = "\n".join(f"{key}={value}" for key, value in sorted(pairs.items()))
     secret_key = hmac.new(b"WebAppData", os.environ["TELEGRAM_BOT_TOKEN"].encode(), hashlib.sha256).digest()
     calculated = hmac.new(secret_key, check_string.encode(), hashlib.sha256).hexdigest()
     if not hmac.compare_digest(calculated, received_hash):
