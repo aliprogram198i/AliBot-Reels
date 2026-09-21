@@ -6,3 +6,4 @@ asyncpg==0.30.0
 aiosqlite==0.21.0
 Authlib==1.6.3
 itsdangerous==2.2.0
+pytest==8.4.2
