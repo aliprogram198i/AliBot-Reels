@@ -10,7 +10,8 @@ from contextlib import asynccontextmanager
 from typing import Annotated
 
 from authlib.integrations.starlette_client import OAuth
-from fastapi import Depends, FastAPI, Header, HTTPException, Query, Request\nfrom fastapi.responses import RedirectResponse
+from fastapi import Depends, FastAPI, Header, HTTPException, Query, Request
+from fastapi.responses import RedirectResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field, HttpUrl
 from sqlalchemy import Boolean, String, select
@@ -28,7 +29,8 @@ ADMIN_API_TOKEN = os.getenv("ADMIN_API_TOKEN", "")
 GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID", "")
 GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET", "")
 GOOGLE_REDIRECT_URI = os.getenv("GOOGLE_REDIRECT_URI", "")
-ALLOWED_ORIGINS = [x.strip() for x in os.getenv("ALLOWED_ORIGINS", "").split(",") if x.strip()]\nFRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173")
+ALLOWED_ORIGINS = [x.strip() for x in os.getenv("ALLOWED_ORIGINS", "").split(",") if x.strip()]
+FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173")
 
 if not SESSION_SECRET and APP_ENV == "production":
     raise RuntimeError("SESSION_SECRET is required in production")
@@ -124,7 +126,8 @@ def validate_telegram_init_data(init_data: str) -> dict[str, str]:
     auth_date = int(pairs.get("auth_date", "0"))
     if abs(time.time() - auth_date) > 86400:
         raise HTTPException(status_code=401, detail="expired Telegram init data")
-    check_string = "\n".join(f"{key}={value}" for key, value in sorted(pairs.items()))
+    check_string = "
+".join(f"{key}={value}" for key, value in sorted(pairs.items()))
     secret_key = hmac.new(b"WebAppData", os.environ["TELEGRAM_BOT_TOKEN"].encode(), hashlib.sha256).digest()
     calculated = hmac.new(secret_key, check_string.encode(), hashlib.sha256).hexdigest()
     if not hmac.compare_digest(calculated, received_hash):
