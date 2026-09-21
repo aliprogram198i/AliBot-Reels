@@ -1,7 +1,11 @@
 from __future__ import annotations
 
+import hashlib
+import hmac
+import json
 import os
 import time
+from urllib.parse import parse_qsl
 from contextlib import asynccontextmanager
 from typing import Annotated
 
@@ -35,7 +39,8 @@ class Base(DeclarativeBase):
 class User(Base):
     __tablename__ = "users"
     id: Mapped[int] = mapped_column(primary_key=True)
-    google_sub: Mapped[str] = mapped_column(String(255), unique=True, index=True)
+    google_sub: Mapped[str | None] = mapped_column(String(255), unique=True, index=True, nullable=True)
+    telegram_id: Mapped[int | None] = mapped_column(unique=True, index=True, nullable=True)
     email: Mapped[str] = mapped_column(String(320), index=True)
     name: Mapped[str | None] = mapped_column(String(255), nullable=True)
     picture: Mapped[str | None] = mapped_column(String(1000), nullable=True)
@@ -50,6 +55,9 @@ class Reel(Base):
     title: Mapped[str | None] = mapped_column(String(500), nullable=True)
     is_adult: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
     published: Mapped[bool] = mapped_column(Boolean, default=True, index=True)
+
+class TelegramAuthIn(BaseModel):
+    init_data: str = Field(min_length=1, max_length=8192)
 
 class ReelIn(BaseModel):
     id: str = Field(min_length=1, max_length=100)
@@ -106,6 +114,23 @@ async def current_user(request: Request, session: DB) -> User | None:
         return None
     return await session.get(User, int(user_id))
 
+def validate_telegram_init_data(init_data: str) -> dict[str, str]:
+    if not os.getenv("TELEGRAM_BOT_TOKEN"):
+        raise HTTPException(status_code=503, detail="Telegram auth is not configured")
+    pairs = dict(parse_qsl(init_data, keep_blank_values=True))
+    received_hash = pairs.pop("hash", None)
+    if not received_hash:
+        raise HTTPException(status_code=401, detail="invalid Telegram init data")
+    auth_date = int(pairs.get("auth_date", "0"))
+    if abs(time.time() - auth_date) > 86400:
+        raise HTTPException(status_code=401, detail="expired Telegram init data")
+    check_string = "\n".join(f"{key}={value}" for key, value in sorted(pairs.items()))
+    secret_key = hmac.new(b"WebAppData", os.environ["TELEGRAM_BOT_TOKEN"].encode(), hashlib.sha256).digest()
+    calculated = hmac.new(secret_key, check_string.encode(), hashlib.sha256).hexdigest()
+    if not hmac.compare_digest(calculated, received_hash):
+        raise HTTPException(status_code=401, detail="invalid Telegram signature")
+    return pairs
+
 async def require_admin(authorization: Annotated[str | None, Header()] = None) -> None:
     if not ADMIN_API_TOKEN or authorization != f"Bearer {ADMIN_API_TOKEN}":
         raise HTTPException(status_code=401, detail="admin authorization required")
@@ -152,6 +177,26 @@ async def google_callback(request: Request, session: DB):
     await session.refresh(user)
     request.session["user_id"] = user.id
     return RedirectResponse(url=FRONTEND_URL, status_code=303)
+
+@app.post("/api/auth/telegram")
+async def telegram_login(payload: TelegramAuthIn, request: Request, session: DB):
+    data = validate_telegram_init_data(payload.init_data)
+    raw_user = data.get("user")
+    if not raw_user:
+        raise HTTPException(status_code=400, detail="Telegram user is missing")
+    telegram_user = json.loads(raw_user)
+    telegram_id = int(telegram_user["id"])
+    result = await session.execute(select(User).where(User.telegram_id == telegram_id))
+    user = result.scalar_one_or_none()
+    if user is None:
+        user = User(telegram_id=telegram_id, email=f"telegram-{telegram_id}@users.invalid", name=telegram_user.get("first_name"))
+        session.add(user)
+    else:
+        user.name = telegram_user.get("first_name") or user.name
+    await session.commit()
+    await session.refresh(user)
+    request.session["user_id"] = user.id
+    return {"authenticated": True, "telegram_id": telegram_id}
 
 @app.post("/api/auth/logout")
 async def logout(request: Request) -> dict[str, bool]:
