@@ -14,7 +14,7 @@ from fastapi import Depends, FastAPI, Header, HTTPException, Query, Request
 from fastapi.responses import RedirectResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field, HttpUrl
-from sqlalchemy import Boolean, String, select
+from sqlalchemy import Boolean, String, select, delete
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 from starlette.middleware.sessions import SessionMiddleware
@@ -46,7 +46,7 @@ class User(Base):
     email: Mapped[str] = mapped_column(String(320), index=True)
     name: Mapped[str | None] = mapped_column(String(255), nullable=True)
     picture: Mapped[str | None] = mapped_column(String(1000), nullable=True)
-    age_eligible: Mapped[bool] = mapped_column(Boolean, default=False)
+    age_eligible: Mapped[bool] = mapped_column(Boolean, default=False)\n    onboarding_complete: Mapped[bool] = mapped_column(Boolean, default=False)
 
 class Reel(Base):
     __tablename__ = "reels"
@@ -58,7 +58,7 @@ class Reel(Base):
     is_adult: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
     published: Mapped[bool] = mapped_column(Boolean, default=True, index=True)
 
-class TelegramAuthIn(BaseModel):
+class OnboardingIn(BaseModel):\n    countries: list[str] = Field(min_length=1, max_length=20)\n    category: str = Field(min_length=1, max_length=50)\n\nclass TelegramAuthIn(BaseModel):
     init_data: str = Field(min_length=1, max_length=8192)
 
 class ReelIn(BaseModel):
@@ -212,7 +212,7 @@ async def set_age_eligibility(request: Request, session: DB):
         raise HTTPException(status_code=401, detail="login required")
     user.age_eligible = True
     await session.commit()
-    return {"age_eligible": True}
+    return {"age_eligible": True}\n\n@app.post("/api/onboarding")\nasync def save_onboarding(payload: OnboardingIn, request: Request, session: DB):\n    user = await current_user(request, session)\n    if not user:\n        raise HTTPException(status_code=401, detail="login required")\n    user.onboarding_complete = True\n    await session.commit()\n    return {"ok": True, "countries": payload.countries, "category": payload.category}
 
 @app.get("/api/feed")
 async def feed(request: Request, session: DB, category: str = Query("all", max_length=50)):
