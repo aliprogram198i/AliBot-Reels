@@ -4,6 +4,7 @@ import './styles.css';
 type Category = { id: string; label: string; emoji: string; restricted?: boolean };
 type Reel = { id: string; category: string; video_url: string; thumbnail_url?: string; title?: string };
 type Me = { authenticated: boolean; user: { name?: string; email?: string; picture?: string; age_eligible: boolean } | null };
+type TelegramApi = { WebApp?: { initData?: string; ready: () => void; expand: () => void } };
 
 const categories: Category[] = [
   { id: 'all', label: 'الكل', emoji: '🔥' },
@@ -33,10 +34,30 @@ export function App() {
   const visibleCategories = useMemo(() => categories, []);
 
   useEffect(() => {
-    fetch(API + '/api/me', { credentials: 'include' })
-      .then(r => r.ok ? r.json() : Promise.reject(new Error('auth')))
-      .then(setMe)
-      .catch(() => undefined);
+    const telegram = (window as Window & { Telegram?: TelegramApi }).Telegram?.WebApp;
+    telegram?.ready();
+    telegram?.expand();
+
+    const authenticate = async () => {
+      if (telegram?.initData) {
+        const response = await fetch(API + '/api/auth/telegram', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ init_data: telegram.initData }),
+        });
+        if (response.ok) {
+          const current = await fetch(API + '/api/me', { credentials: 'include' });
+          if (current.ok) setMe(await current.json());
+          return;
+        }
+      }
+      fetch(API + '/api/me', { credentials: 'include' })
+        .then(r => r.ok ? r.json() : Promise.reject(new Error('auth')))
+        .then(setMe)
+        .catch(() => undefined);
+    };
+    void authenticate();
   }, []);
 
   useEffect(() => {
