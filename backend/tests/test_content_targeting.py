@@ -50,7 +50,7 @@ def test_country_and_category_targeting_query():
             Reel(id="nl-music", category="music", video_url="https://cdn.invalid/music.mp4", is_adult=False, published=True),
             Reel(id="nl-adult", category="adult", video_url="https://cdn.invalid/adult.mp4", is_adult=True, published=True),
         ])
-        await session.flush()
+        session.flush()
 
         session.add_all([
             ReelCountry(reel_id="nl-sports", country_code="NL"),
