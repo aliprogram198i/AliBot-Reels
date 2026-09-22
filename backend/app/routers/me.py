@@ -1,11 +1,10 @@
 from fastapi import APIRouter,Depends,Request
 from sqlalchemy import select
 from ..models import UserCountryPreference,UserPreference
-from .dependencies import DB,require_authenticated
+from .dependencies import DB,current_user,require_authenticated
 router=APIRouter(prefix="/api",tags=["users"])
 @router.get("/me")
-async def me(request:Request,session:DB):
-    user=await request.app.state.current_user(request,session)
+async def me(request:Request,session:DB,user=Depends(current_user)):
     if not user: return {"authenticated":False,"user":None}
     pref=await session.get(UserPreference,user.id)
     rows=await session.execute(select(UserCountryPreference.country_code).where(UserCountryPreference.user_id==user.id).order_by(UserCountryPreference.country_code))
