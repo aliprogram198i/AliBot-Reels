@@ -1,4 +1,4 @@
-from fastapi import APIRouter,Depends,HTTPException
+from fastapi import APIRouter,Depends,HTTPException,Request
 from sqlalchemy import delete
 from ..models import UserCountryPreference,UserPreference
 from ..services.validation import validate_category,validate_country_codes
@@ -6,7 +6,7 @@ from ..schemas import OnboardingIn
 from .dependencies import DB,require_authenticated
 router=APIRouter(prefix="/api",tags=["onboarding"])
 @router.post("/onboarding")
-async def save_onboarding(payload:OnboardingIn,session:DB,user=Depends(require_authenticated)):
+async def save_onboarding(payload:OnboardingIn,request:Request,session:DB,user=Depends(require_authenticated)):
     countries=validate_country_codes(payload.countries); category=validate_category(payload.category)
     if category=="adult" and not user.age_eligible: raise HTTPException(403,"age eligibility required")
     await session.execute(delete(UserCountryPreference).where(UserCountryPreference.user_id==user.id))
@@ -14,6 +14,5 @@ async def save_onboarding(payload:OnboardingIn,session:DB,user=Depends(require_a
     pref=await session.get(UserPreference,user.id)
     if pref is None: session.add(UserPreference(user_id=user.id,category=category))
     else: pref.category=category
-    user.onboarding_complete=True; await session.commit()
-    request_cache=__import__("fastapi").Request
+    user.onboarding_complete=True; await session.commit(); request.app.state.feed_cache.clear()
     return {"ok":True,"countries":countries,"category":category}
