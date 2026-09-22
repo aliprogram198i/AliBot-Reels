@@ -9,7 +9,9 @@ from starlette.middleware.sessions import SessionMiddleware
 
 from .core.cache import FeedCache
 from .core.config import FEED_CACHE_TTL, load_settings
-from .db import create_session_factory
+from .db import Base, create_session_factory
+from .models import Reel, ReelCountry, User, UserCountryPreference, UserPreference
+from .services.validation import validate_category, validate_country_codes
 from .services.auth import AuthService
 from .services.feed import FeedService
 from .routers import admin, auth, feed, health, me, onboarding
