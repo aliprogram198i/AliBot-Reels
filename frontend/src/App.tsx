@@ -88,11 +88,22 @@ export function App() {
   };
 
   const refreshMe = async () => {
-    const response = await fetch(API + '/api/me', { credentials: 'include' });
-    if (!response.ok) return null;
-    const current = (await response.json()) as Me;
-    setMe(current);
-    return current;
+    const controller = new AbortController();
+    const timeout = window.setTimeout(() => controller.abort(), 8000);
+    try {
+      const response = await fetch(API + '/api/me', {
+        credentials: 'include',
+        signal: controller.signal,
+      });
+      if (!response.ok) return null;
+      const current = (await response.json()) as Me;
+      setMe(current);
+      return current;
+    } catch {
+      return null;
+    } finally {
+      window.clearTimeout(timeout);
+    }
   };
 
   useEffect(() => {
@@ -103,12 +114,15 @@ export function App() {
     const authenticate = async () => {
       try {
         if (telegram?.initData) {
+          const controller = new AbortController();
+          const timeout = window.setTimeout(() => controller.abort(), 8000);
           const response = await fetch(API + '/api/auth/telegram', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             credentials: 'include',
             body: JSON.stringify({ init_data: telegram.initData }),
-          });
+            signal: controller.signal,
+          }).finally(() => window.clearTimeout(timeout));
           if (!response.ok) {
             await refreshMe();
             return;
