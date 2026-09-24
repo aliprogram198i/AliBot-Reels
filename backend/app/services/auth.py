@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import time
+
 from authlib.integrations.starlette_client import OAuth
 from fastapi import HTTPException, Request
 from fastapi.responses import RedirectResponse
@@ -64,7 +66,12 @@ class AuthService:
         await session.commit()
         await session.refresh(user)
         request.session["user_id"] = user.id
-        return RedirectResponse(url=self.frontend_url, status_code=303)
+        separator = "&" if "?" in self.frontend_url else "?"
+        return RedirectResponse(
+            url=f"{self.frontend_url}{separator}oauth_return={time.time_ns()}",
+            status_code=303,
+            headers={"Cache-Control": "no-store"},
+        )
 
     async def telegram_login(
         self,
