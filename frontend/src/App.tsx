@@ -209,7 +209,7 @@ export function App() {
   const login = () => {
     sessionStorage.setItem(
       DRAFT_KEY,
-      JSON.stringify({ countries: selectedCountries, category }),
+      JSON.stringify({ countries: selectedCountries, category, step: 'category' }),
     );
     window.location.href = API + '/api/auth/google/login';
   };
