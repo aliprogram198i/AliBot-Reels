@@ -50,6 +50,7 @@ const categories: Category[] = [
 
 const API = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '');
 const DRAFT_KEY = 'alibot-reels-onboarding-draft';
+type OnboardingDraft = { countries?: string[]; category?: string; step?: 'countries' | 'category' };
 
 export function App() {
   const [step, setStep] = useState<'countries' | 'category' | 'feed'>('countries');
@@ -127,9 +128,10 @@ export function App() {
         const rawDraft = sessionStorage.getItem(DRAFT_KEY);
         if (rawDraft) {
           try {
-            const draft = JSON.parse(rawDraft) as { countries?: string[]; category?: string };
+            const draft = JSON.parse(rawDraft) as OnboardingDraft;
             if (Array.isArray(draft.countries)) setSelectedCountries(draft.countries);
             if (typeof draft.category === 'string') setCategory(draft.category);
+            if (draft.step === 'category' && Array.isArray(draft.countries) && draft.countries.length) setStep('category');
           } catch {
             sessionStorage.removeItem(DRAFT_KEY);
           }
@@ -159,6 +161,7 @@ export function App() {
       return;
     }
     setError('');
+    sessionStorage.setItem(DRAFT_KEY, JSON.stringify({ countries: selectedCountries, category, step: 'category' }));
     setStep('category');
   };
 
@@ -170,7 +173,7 @@ export function App() {
     if (!me.authenticated) {
       sessionStorage.setItem(
         DRAFT_KEY,
-        JSON.stringify({ countries: selectedCountries, category: choice.id }),
+        JSON.stringify({ countries: selectedCountries, category: choice.id, step: 'category' }),
       );
       setError('LOGIN_REQUIRED');
       return;
@@ -179,6 +182,7 @@ export function App() {
     setError('');
     try {
       await persistOnboarding(choice.id);
+      sessionStorage.removeItem(DRAFT_KEY);
       setCategory(choice.id);
       setStep('feed');
       await loadFeed(choice.id);
